@@ -22,12 +22,38 @@ repositories {
 }
 
 dependencies {
+    // Spring Boot Starters
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // MyBatis Support
+    implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
+
+    // Lombok
     compileOnly 'org.projectlombok:lombok'
-    runtimeOnly 'com.h2database:h2'
     annotationProcessor 'org.projectlombok:lombok'
+
+    // Database Drivers (Choose one based on your database)
+    // MySQL
+    runtimeOnly 'com.mysql:mysql-connector-j'
+
+    // PostgreSQL
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // Oracle
+    // runtimeOnly 'com.oracle.database.jdbc:ojdbc11'
+
+    // MS SQL Server
+    runtimeOnly 'com.microsoft.sqlserver:mssql-jdbc'
+
+    // MariaDB
+    runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
+
+    // Tibero (requires manual installation)
+    // implementation files('libs/tibero-jdbc.jar')
+
+    // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 

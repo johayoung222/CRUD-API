@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.crudapi.repository.mybatis.ProductMapper">
+
+    <!-- Result Map -->
+    <resultMap id="ProductResultMap" type="com.example.crudapi.entity.Product">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="description" column="description"/>
+        <result property="price" column="price"/>
+        <result property="quantity" column="quantity"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <!-- 모든 상품 조회 -->
+    <select id="findAll" resultMap="ProductResultMap">
+        SELECT id, name, description, price, quantity, created_at, updated_at
+        FROM products
+        ORDER BY id
+    </select>
+
+    <!-- ID로 상품 조회 -->
+    <select id="findById" parameterType="long" resultMap="ProductResultMap">
+        SELECT id, name, description, price, quantity, created_at, updated_at
+        FROM products
+        WHERE id = #{id}
+    </select>
+
+    <!-- 이름으로 상품 검색 (대소문자 무시) -->
+    <select id="findByNameContainingIgnoreCase" parameterType="string" resultMap="ProductResultMap">
+        SELECT id, name, description, price, quantity, created_at, updated_at
+        FROM products
+        WHERE LOWER(name) LIKE LOWER(CONCAT('%', #{name}, '%'))
+        ORDER BY id
+    </select>
+
+    <!-- 상품 삽입 -->
+    <insert id="insert" parameterType="com.example.crudapi.entity.Product" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO products (name, description, price, quantity, created_at, updated_at)
+        VALUES (#{name}, #{description}, #{price}, #{quantity}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <!-- 상품 업데이트 -->
+    <update id="update" parameterType="com.example.crudapi.entity.Product">
+        UPDATE products
+        SET name = #{name},
+            description = #{description},
+            price = #{price},
+            quantity = #{quantity},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 상품 삭제 -->
+    <delete id="delete" parameterType="long">
+        DELETE FROM products
+        WHERE id = #{id}
+    </delete>
+
+</mapper>
