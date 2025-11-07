@@ -1,13 +1,21 @@
 # CRUD API - Spring Boot Application
 
-Java 17 기반의 간단한 Product CRUD REST API입니다. Kubernetes 환경에 배포 가능하도록 설계되었습니다.
+Java 17 기반의 Product CRUD REST API입니다. 다양한 데이터베이스와 데이터 액세스 계층을 지원하며, Kubernetes 환경에 배포 가능하도록 설계되었습니다.
 
 ## 기술 스택
 
 - Java 17
 - Spring Boot 3.2.0
-- Spring Data JPA
-- H2 Database (In-Memory)
+- 데이터 액세스 계층
+  - Spring Data JPA
+  - MyBatis 3.0.3
+- 지원 데이터베이스
+  - PostgreSQL
+  - MySQL
+  - MariaDB
+  - Oracle
+  - MS SQL Server
+  - Tibero
 - Lombok
 - Gradle 8.5
 
@@ -18,6 +26,9 @@ Java 17 기반의 간단한 Product CRUD REST API입니다. Kubernetes 환경에
 - Health Check 엔드포인트
 - 입력 유효성 검사
 - RESTful API 설계
+- 다중 데이터베이스 지원 (PostgreSQL, MySQL, MariaDB, Oracle, MS SQL Server, Tibero)
+- 데이터 액세스 계층 선택 가능 (JPA / MyBatis)
+- 설정 기반 DB 및 데이터 액세스 전환
 
 ## API 엔드포인트
 
@@ -66,6 +77,7 @@ Java 17 기반의 간단한 Product CRUD REST API입니다. Kubernetes 환경에
 
 - JDK 17 이상
 - Gradle 8.5 이상 (또는 포함된 Gradle Wrapper 사용)
+- 데이터베이스 서버 (PostgreSQL, MySQL, MariaDB, Oracle, MS SQL Server, 또는 Tibero 중 하나)
 
 ### 실행 방법
 
@@ -76,13 +88,43 @@ git clone <repository-url>
 cd CRUD-API
 ```
 
-2. 애플리케이션 빌드
+2. 데이터베이스 설정
+
+**자세한 DB 설정 방법은 [DATABASE_SETUP.md](DATABASE_SETUP.md) 파일을 참조하세요.**
+
+- 데이터베이스 서버 설치 및 실행
+- 데이터베이스 및 사용자 생성
+- `DATABASE_SETUP.md`에서 해당 DB의 DDL 스크립트 실행하여 테이블 생성
+
+3. application.properties 설정
+
+`src/main/resources/application.properties` 파일 수정:
+
+```properties
+# DB 연결 정보 수정
+DB_HOST=localhost
+DB_PORT=5432  # 사용하는 DB의 포트
+DB_NAME=testdb
+DB_USERNAME=dbuser
+DB_PASSWORD=dbpassword
+
+# 사용할 DB에 맞게 주석 해제
+# 예: PostgreSQL 사용 시
+spring.datasource.url=jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+spring.datasource.driver-class-name=org.postgresql.Driver
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+
+# 데이터 액세스 계층 선택 (JPA 또는 MYBATIS)
+app.data-access.type=JPA
+```
+
+4. 애플리케이션 빌드
 
 ```bash
 ./gradlew build
 ```
 
-3. 애플리케이션 실행
+5. 애플리케이션 실행
 
 ```bash
 ./gradlew bootRun
@@ -94,13 +136,10 @@ cd CRUD-API
 java -jar build/libs/crud-api-0.0.1-SNAPSHOT.jar
 ```
 
-4. 애플리케이션 접속
+6. 애플리케이션 접속
 
 - API: http://localhost:8080/api/products
-- H2 Console: http://localhost:8080/h2-console
-  - JDBC URL: `jdbc:h2:mem:testdb`
-  - Username: `sa`
-  - Password: (비워둠)
+- Health Check: http://localhost:8080/actuator/health
 
 ## Docker 빌드 및 실행
 
@@ -184,16 +223,26 @@ CRUD-API/
 │   ├── main/
 │   │   ├── java/com/example/crudapi/
 │   │   │   ├── CrudApiApplication.java
+│   │   │   ├── config/
+│   │   │   │   └── DataAccessConfiguration.java
 │   │   │   ├── controller/
 │   │   │   │   └── ProductController.java
 │   │   │   ├── entity/
 │   │   │   │   └── Product.java
 │   │   │   ├── repository/
-│   │   │   │   └── ProductRepository.java
+│   │   │   │   ├── ProductRepository.java (공통 인터페이스)
+│   │   │   │   ├── jpa/
+│   │   │   │   │   ├── ProductJpaRepository.java
+│   │   │   │   │   └── ProductRepositoryJpaImpl.java
+│   │   │   │   └── mybatis/
+│   │   │   │       ├── ProductMapper.java
+│   │   │   │       └── ProductRepositoryMyBatisImpl.java
 │   │   │   └── service/
 │   │   │       └── ProductService.java
 │   │   └── resources/
-│   │       └── application.properties
+│   │       ├── application.properties
+│   │       └── mapper/
+│   │           └── ProductMapper.xml
 │   └── test/
 ├── k8s/
 │   ├── deployment.yaml
@@ -203,6 +252,7 @@ CRUD-API/
 ├── Dockerfile
 ├── .dockerignore
 ├── build.gradle
+├── DATABASE_SETUP.md
 └── README.md
 ```
 
@@ -214,13 +264,40 @@ CRUD-API/
 # 서버 포트
 server.port=8080
 
-# H2 데이터베이스 (개발용)
-spring.datasource.url=jdbc:h2:mem:testdb
-spring.jpa.hibernate.ddl-auto=update
+# 데이터베이스 연결 정보 (공통)
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=testdb
+DB_USERNAME=dbuser
+DB_PASSWORD=dbpassword
 
-# H2 콘솔 활성화
-spring.h2.console.enabled=true
+spring.datasource.username=${DB_USERNAME}
+spring.datasource.password=${DB_PASSWORD}
+
+# 데이터베이스별 드라이버 설정 (하나를 선택하여 주석 해제)
+# PostgreSQL
+spring.datasource.url=jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+spring.datasource.driver-class-name=org.postgresql.Driver
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+
+# MySQL
+# spring.datasource.url=jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+# spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+# spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
+
+# 데이터 액세스 계층 선택
+app.data-access.type=JPA  # 또는 MYBATIS
+
+# JPA 설정
+spring.jpa.hibernate.ddl-auto=none  # 운영 환경에서는 none 또는 validate 사용
+spring.jpa.show-sql=true
+
+# MyBatis 설정
+mybatis.mapper-locations=classpath:mapper/**/*.xml
+mybatis.configuration.map-underscore-to-camel-case=true
 ```
+
+자세한 설정 방법은 [DATABASE_SETUP.md](DATABASE_SETUP.md)를 참조하세요.
 
 ## 테스트
 
