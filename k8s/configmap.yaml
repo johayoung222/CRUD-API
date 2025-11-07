@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: crud-api-config
+data:
+  application.properties: |
+    spring.application.name=crud-api
+    server.port=8080
+    spring.jpa.hibernate.ddl-auto=update
+    spring.jpa.show-sql=false
+    logging.level.org.springframework.web=INFO
+    logging.level.com.example.crudapi=INFO
