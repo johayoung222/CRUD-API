@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crud-api
+  labels:
+    app: crud-api
+spec:
+  replicas: 3  # 3개 POD로 테스트
+  selector:
+    matchLabels:
+      app: crud-api
+  template:
+    metadata:
+      labels:
+        app: crud-api
+    spec:
+      # HostPath 볼륨 정의
+      volumes:
+        - name: privacy-agent
+          hostPath:
+            path: /agent  # Minikube에서 /apps/k8s/privacy-agent-3.0이 /agent로 마운트됨
+            type: Directory
+
+      containers:
+      - name: crud-api
+        image: crud-api:latest
+        imagePullPolicy: IfNotPresent  # 로컬 이미지 사용
+        ports:
+        - containerPort: 8080
+          name: http
+
+        env:
+        # Downward API: POD 이름을 환경변수로 주입
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+
+        # Downward API: POD IP를 환경변수로 주입 (선택사항)
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+
+        # 데이터베이스 연결 정보
+        - name: DB_HOST
+          value: "192.168.1.55"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "cruddb"
+        - name: DB_USERNAME
+          value: "cruduser"
+        - name: DB_PASSWORD
+          value: "crudpass123"  # 실제 운영에서는 Secret 사용 권장
+
+        # Privacy Agent 설정
+        # JVM 옵션으로 Agent 로드 및 POD별 로그 디렉토리 분리
+        - name: JAVA_TOOL_OPTIONS
+          value: >-
+            -Dprivacy-agent.home.dir=/agent/privacy-instance/pargos
+            -Dprivacy-agent.log.dir=/agent/privacy-instance/pargos/logs/$(POD_NAME)
+            -javaagent:/agent/lib/privacy-agent-bootstrap.jar
+            -Xbootclasspath/p:/agent/lib/privacy-agent.jar
+
+        # 볼륨 마운트
+        volumeMounts:
+        - name: privacy-agent
+          mountPath: /agent
+          readOnly: true  # Agent는 읽기 전용 (로그는 호스트에 직접 기록)
+
+        # 리소스 제한
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+
+        # Liveness Probe: 애플리케이션이 살아있는지 확인
+        livenessProbe:
+          httpGet:
+            path: /api/products/health
+            port: 8080
+          initialDelaySeconds: 60  # Agent 로딩 시간 고려
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        # Readiness Probe: 트래픽을 받을 준비가 되었는지 확인
+        readinessProbe:
+          httpGet:
+            path: /api/products/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+      restartPolicy: Always

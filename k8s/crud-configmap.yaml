@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: crud-api-config
+  labels:
+    app: crud-api
+data:
+  # 데이터베이스 연결 정보 (민감하지 않은 정보만)
+  DB_HOST: "192.168.1.55"
+  DB_PORT: "5432"
+  DB_NAME: "cruddb"
+
+  # Agent 설정 경로
+  AGENT_HOME: "/agent/privacy-instance/pargos"
+  AGENT_LIB: "/agent/lib"
+
+  # 애플리케이션 설정
+  SPRING_PROFILES_ACTIVE: "prod"
+
+  # 로깅 레벨
+  LOGGING_LEVEL_ROOT: "INFO"
+  LOGGING_LEVEL_APP: "DEBUG"
