@@ -30,6 +30,10 @@ dependencies {
     // MyBatis Support
     implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
 
+    // Session & Redis Support
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.session:spring-session-data-redis'
+
     // Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

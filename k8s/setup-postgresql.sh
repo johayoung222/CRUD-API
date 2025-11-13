@@ -53,20 +53,40 @@ CREATE TABLE IF NOT EXISTS products (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- users 테이블 생성
+CREATE TABLE IF NOT EXISTS users (
+    id BIGSERIAL PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    email VARCHAR(100),
+    name VARCHAR(50),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 인덱스 생성
 CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);
 CREATE INDEX IF NOT EXISTS idx_products_created_at ON products(created_at);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 
--- 샘플 데이터 삽입
+-- products 샘플 데이터 삽입
 INSERT INTO products (name, description, price, quantity, created_at, updated_at) VALUES
 ('노트북', '고성능 노트북', 1500000.00, 10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 ('마우스', '무선 마우스', 35000.00, 50, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 ('키보드', '기계식 키보드', 120000.00, 30, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT DO NOTHING;
 
+-- users 샘플 데이터 삽입
+INSERT INTO users (username, password, email, name, created_at, updated_at) VALUES
+('admin', 'admin123', 'admin@example.com', '관리자', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('testuser', 'test123', 'test@example.com', '테스트유저', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('demo', 'demo123', 'demo@example.com', '데모', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT DO NOTHING;
+
 -- 생성된 테이블 확인
 \dt
 SELECT * FROM products;
+SELECT * FROM users;
 EOF
 
 echo ""

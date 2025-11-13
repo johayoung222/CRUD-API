@@ -6,7 +6,7 @@
 
 ## 📋 테이블 구조
 
-`products` 테이블은 다음과 같은 컬럼을 가집니다:
+### products 테이블
 
 | 컬럼명 | 데이터 타입 | 제약 조건 | 설명 |
 |--------|------------|----------|------|
@@ -18,6 +18,18 @@
 | created_at | TIMESTAMP/DATE | NOT NULL | 생성 일시 |
 | updated_at | TIMESTAMP/DATE | NULL | 수정 일시 |
 
+### users 테이블
+
+| 컬럼명 | 데이터 타입 | 제약 조건 | 설명 |
+|--------|------------|----------|------|
+| id | BIGINT/NUMBER | PRIMARY KEY, AUTO_INCREMENT | 사용자 ID (자동 증가) |
+| username | VARCHAR(50) | NOT NULL, UNIQUE | 사용자명 |
+| password | VARCHAR(255) | NOT NULL | 비밀번호 |
+| email | VARCHAR(100) | NULL | 이메일 |
+| name | VARCHAR(50) | NULL | 이름 |
+| created_at | TIMESTAMP/DATE | NOT NULL | 생성 일시 |
+| updated_at | TIMESTAMP/DATE | NULL | 수정 일시 |
+
 ---
 
 ## 🗄️ 데이터베이스별 DDL 스크립트
@@ -25,7 +37,7 @@
 ### 1. PostgreSQL
 
 ```sql
--- 테이블 생성
+-- products 테이블 생성
 CREATE TABLE products (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -36,15 +48,33 @@ CREATE TABLE products (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- users 테이블 생성
+CREATE TABLE users (
+    id BIGSERIAL PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    email VARCHAR(100),
+    name VARCHAR(50),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 인덱스 생성 (선택사항)
 CREATE INDEX idx_products_name ON products(name);
 CREATE INDEX idx_products_created_at ON products(created_at);
+CREATE INDEX idx_users_username ON users(username);
 
--- 샘플 데이터 삽입
+-- products 샘플 데이터 삽입
 INSERT INTO products (name, description, price, quantity, created_at, updated_at) VALUES
 ('노트북', '고성능 노트북', 1500000.00, 10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 ('마우스', '무선 마우스', 35000.00, 50, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 ('키보드', '기계식 키보드', 120000.00, 30, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+-- users 샘플 데이터 삽입 (비밀번호는 실제로는 암호화해야 함)
+INSERT INTO users (username, password, email, name, created_at, updated_at) VALUES
+('admin', 'admin123', 'admin@example.com', '관리자', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('testuser', 'test123', 'test@example.com', '테스트유저', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('demo', 'demo123', 'demo@example.com', '데모', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
 ```
 
 ---

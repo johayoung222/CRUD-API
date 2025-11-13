@@ -10,6 +10,10 @@ data:
   DB_PORT: "5432"
   DB_NAME: "cruddb"
 
+  # Redis 연결 정보
+  REDIS_HOST: "192.168.1.55"
+  REDIS_PORT: "6379"
+
   # Agent 설정 경로
   AGENT_HOME: "/agent/privacy-instance/pargos"
   AGENT_LIB: "/agent/lib"
