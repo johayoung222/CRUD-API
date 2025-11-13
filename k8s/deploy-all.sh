@@ -31,9 +31,34 @@ fi
 echo "✓ Git 저장소 업데이트 완료"
 echo ""
 
-# 2. Gradle 빌드
+# 2. Gradle 설치 및 빌드
 echo "2. Gradle 빌드 시작..."
 cd $PROJECT_DIR
+
+# Gradle이 설치되어 있는지 확인
+if ! command -v gradle &> /dev/null; then
+    echo "Gradle이 설치되어 있지 않습니다. SDKMAN을 통해 설치합니다..."
+
+    # SDKMAN 설치 (이미 설치되어 있으면 스킵)
+    if [ ! -d "$HOME/.sdkman" ]; then
+        curl -s "https://get.sdkman.io" | bash
+        source "$HOME/.sdkman/bin/sdkman-init.sh"
+    else
+        source "$HOME/.sdkman/bin/sdkman-init.sh"
+    fi
+
+    # Gradle 설치
+    sdk install gradle 8.5 || true
+    source "$HOME/.sdkman/bin/sdkman-init.sh"
+fi
+
+# Gradle wrapper 생성 (없는 경우)
+if [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
+    echo "Gradle wrapper를 생성합니다..."
+    gradle wrapper --gradle-version=8.5
+fi
+
+# 빌드
 chmod +x gradlew
 ./gradlew clean build -x test
 echo "✓ Gradle 빌드 완료"
