@@ -16,16 +16,28 @@ Java 17 기반의 Product CRUD REST API입니다. 다양한 데이터베이스�
   - Oracle
   - MS SQL Server
   - Tibero
+- 인증 & 세션
+  - Spring Session
+  - Redis (세션 스토리지)
 - Lombok
 - Gradle 8.5
 
 ## 주요 기능
 
+### Product 관리
 - Product CRUD 작업 (생성, 조회, 수정, 삭제)
 - Product 이름 검색
 - Health Check 엔드포인트
 - 입력 유효성 검사
 - RESTful API 설계
+
+### 인증 & 세션
+- 세션 기반 인증 (HTTP Session + Redis)
+- Redis 토큰 기반 인증 (UUID 토큰)
+- 쿠키 기반 및 헤더 기반 인증 지원
+- 자동 세션 만료 (30분 TTL)
+
+### 데이터베이스
 - 다중 데이터베이스 지원 (PostgreSQL, MySQL, MariaDB, Oracle, MS SQL Server, Tibero)
 - 데이터 액세스 계층 선택 가능 (JPA / MyBatis)
 - 설정 기반 DB 및 데이터 액세스 전환
@@ -43,6 +55,26 @@ Java 17 기반의 Product CRUD REST API입니다. 다양한 데이터베이스�
 | PUT | `/api/products/{id}` | 제품 정보 수정 |
 | DELETE | `/api/products/{id}` | 제품 삭제 |
 | GET | `/api/products/health` | 헬스 체크 |
+
+### 인증 (세션 기반)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/session/login` | 세션 로그인 |
+| POST | `/api/auth/session/logout` | 세션 로그아웃 |
+| GET | `/api/auth/session/me` | 현재 사용자 정보 조회 |
+| GET | `/api/auth/session/check` | 인증 상태 확인 |
+
+### 인증 (Redis 토큰 기반)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/redis/login` | Redis 토큰 로그인 |
+| POST | `/api/auth/redis/logout` | Redis 토큰 로그아웃 |
+| GET | `/api/auth/redis/me` | 현재 사용자 정보 조회 |
+| GET | `/api/auth/redis/check` | 인증 상태 확인 |
+| POST | `/api/auth/redis/extend` | 세션 연장 |
+| GET | `/api/auth/health` | Auth 서비스 헬스 체크 |
 
 ### 요청/응답 예시
 
@@ -94,7 +126,12 @@ cd CRUD-API
 
 - 데이터베이스 서버 설치 및 실행
 - 데이터베이스 및 사용자 생성
-- `DATABASE_SETUP.md`에서 해당 DB의 DDL 스크립트 실행하여 테이블 생성
+- `DATABASE_SETUP.md`에서 해당 DB의 DDL 스크립트 실행하여 테이블 생성 (products, users)
+
+2-1. Redis 설정 (선택사항 - 인증 기능 사용 시 필요)
+
+- Redis 서버 설치 및 실행 (기본 포트 6379)
+- 인증 기능을 사용하지 않으면 생략 가능
 
 3. application.properties 설정
 
@@ -138,7 +175,9 @@ java -jar build/libs/crud-api-0.0.1-SNAPSHOT.jar
 
 6. 애플리케이션 접속
 
-- API: http://localhost:8080/api/products
+- Product API: http://localhost:8080/api/products
+- Auth API (Session): http://localhost:8080/api/auth/session/login
+- Auth API (Redis): http://localhost:8080/api/auth/redis/login
 - Health Check: http://localhost:8080/actuator/health
 
 ## Docker 빌드 및 실행
@@ -311,6 +350,8 @@ open build/reports/tests/test/index.html
 
 ## API 테스트 예시 (curl)
 
+### Product API
+
 ```bash
 # 제품 생성
 curl -X POST http://localhost:8080/api/products \
@@ -334,6 +375,54 @@ curl -X DELETE http://localhost:8080/api/products/1
 # Health Check
 curl http://localhost:8080/api/products/health
 ```
+
+### 인증 API (세션 기반)
+
+```bash
+# 세션 로그인
+curl -c cookies.txt -X POST http://localhost:8080/api/auth/session/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+
+# 현재 사용자 정보 조회 (쿠키 사용)
+curl -b cookies.txt http://localhost:8080/api/auth/session/me
+
+# 인증 상태 확인
+curl -b cookies.txt http://localhost:8080/api/auth/session/check
+
+# 로그아웃
+curl -b cookies.txt -X POST http://localhost:8080/api/auth/session/logout
+```
+
+### 인증 API (Redis 토큰 기반)
+
+```bash
+# Redis 로그인 (토큰 발급)
+RESPONSE=$(curl -s -X POST http://localhost:8080/api/auth/redis/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","password":"test123"}')
+echo $RESPONSE
+
+# 토큰 추출
+TOKEN=$(echo $RESPONSE | jq -r '.sessionId')
+
+# 현재 사용자 정보 조회 (헤더에 토큰 포함)
+curl -H "X-Session-Token: $TOKEN" http://localhost:8080/api/auth/redis/me
+
+# 인증 상태 확인
+curl -H "X-Session-Token: $TOKEN" http://localhost:8080/api/auth/redis/check
+
+# 세션 연장
+curl -H "X-Session-Token: $TOKEN" -X POST http://localhost:8080/api/auth/redis/extend
+
+# 로그아웃
+curl -H "X-Session-Token: $TOKEN" -X POST http://localhost:8080/api/auth/redis/logout
+```
+
+**샘플 사용자 계정:**
+- admin / admin123
+- testuser / test123
+- demo / demo123
 
 ## 라이센스
 
