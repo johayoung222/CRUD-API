@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: crud-api
+  name: crud-api-deployment
   labels:
     app: crud-api
 spec:
@@ -75,7 +75,7 @@ spec:
         volumeMounts:
         - name: privacy-agent
           mountPath: /agent
-          readOnly: true  # Agent는 읽기 전용 (로그는 호스트에 직접 기록)
+          readOnly: false  # Agent 로그 기록을 위해 쓰기 권한 필요
 
         # 리소스 제한
         resources:
