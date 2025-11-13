@@ -155,65 +155,175 @@ docker build -t crud-api:latest .
 docker run -p 8080:8080 crud-api:latest
 ```
 
-## Kubernetes 배포
+## Kubernetes 배포 (Privacy Agent 통합)
 
-### 이미지 준비
+이 프로젝트는 **BCI 기반 Privacy Agent**와 통합되어 POD별 접속 로그를 자동으로 생성합니다.
+
+### 주요 특징
+
+- 🔒 **Privacy Agent 통합**: Javassist 기반 BCI Agent가 모든 API 호출을 로깅
+- 📊 **POD별 로그 분리**: Kubernetes Downward API를 활용한 POD별 독립 로그 디렉토리
+- 🚀 **자동화 스크립트**: Minikube 환경 구축부터 배포까지 원클릭 자동화
+- 🔄 **3-POD 구성**: 로드밸런싱 및 고가용성 테스트 환경
+
+### 사전 준비사항
+
+1. **Privacy Agent 설치**
+   - Agent가 `/apps/k8s/privacy-agent-3.0` 경로에 설치되어 있어야 함
+   - `install.sh`로 시스템 코드 "pargos" 설치 완료
+
+2. **PostgreSQL 데이터베이스**
+   - 192.168.1.55 서버에 PostgreSQL 설치 및 실행
+
+3. **Minikube 환경**
+   - Minikube, kubectl 설치
+
+### 빠른 시작 (자동화 스크립트 사용)
+
+#### 1단계: PostgreSQL 설정
+
+```bash
+cd k8s
+chmod +x setup-postgresql.sh
+./setup-postgresql.sh
+```
+
+이 스크립트는 다음 작업을 자동으로 수행합니다:
+- cruddb 데이터베이스 생성
+- cruduser 사용자 생성 및 권한 부여
+- products 테이블 생성 및 샘플 데이터 삽입
+
+#### 2단계: Minikube 시작 및 Agent 마운트
+
+```bash
+chmod +x setup-minikube.sh
+./setup-minikube.sh
+
+# Docker 환경 설정 (중요!)
+eval $(minikube docker-env)
+```
+
+이 스크립트는 다음 작업을 자동으로 수행합니다:
+- Minikube 시작
+- Privacy Agent 디렉토리를 Minikube 내부로 마운트 (`/apps/k8s/privacy-agent-3.0` → `/agent`)
+- 마운트 확인
+
+#### 3단계: 애플리케이션 배포
+
+```bash
+chmod +x deploy.sh
+./deploy.sh
+```
+
+이 스크립트는 다음 작업을 자동으로 수행합니다:
+- Docker 이미지 빌드 (Minikube 내부 레지스트리 사용)
+- ConfigMap, Deployment, Service 배포
+- POD 상태 확인 및 접근 URL 출력
+
+#### 4단계: API 테스트
+
+```bash
+chmod +x test-api.sh
+./test-api.sh
+```
+
+### POD별 로그 확인
+
+Privacy Agent는 각 POD마다 독립적인 로그를 생성합니다:
+
+```bash
+# 192.168.1.55 서버에서 확인
+ls -la /apps/k8s/privacy-agent-3.0/privacy-instance/pargos/logs/
+
+# 출력 예시:
+# drwxr-xr-x 2 root root 4096 Jan 12 10:00 crud-api-xxxxxxxxx-xxxxx/
+# drwxr-xr-x 2 root root 4096 Jan 12 10:00 crud-api-xxxxxxxxx-yyyyy/
+# drwxr-xr-x 2 root root 4096 Jan 12 10:00 crud-api-xxxxxxxxx-zzzzz/
+
+# 각 POD의 로그 파일 확인
+ls -la /apps/k8s/privacy-agent-3.0/privacy-instance/pargos/logs/crud-api-*/
+
+# Agent 로그 실시간 모니터링
+tail -f /apps/k8s/privacy-agent-3.0/privacy-instance/pargos/logs/crud-api-*/AL_WAS*_ACC_LOG_*.dat
+```
+
+### 수동 배포 (고급 사용자용)
+
+#### 이미지 준비
 
 1. Docker 이미지 빌드
 
 ```bash
-docker build -t your-registry/crud-api:v1.0.0 .
+# Minikube Docker 환경 사용
+eval $(minikube docker-env)
+docker build -t crud-api:latest .
 ```
 
-2. 이미지를 레지스트리에 푸시
+2. 레지스트리 사용 시
 
 ```bash
+docker build -t your-registry/crud-api:v1.0.0 .
 docker push your-registry/crud-api:v1.0.0
 ```
 
-3. `k8s/deployment.yaml` 파일의 이미지 경로 수정
+3. `k8s/crud-deployment.yaml` 파일의 이미지 경로 수정
 
 ```yaml
 image: your-registry/crud-api:v1.0.0
 ```
 
-### Kubernetes 리소스 배포
+#### Kubernetes 리소스 배포
 
 ```bash
 # ConfigMap 배포
-kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/crud-configmap.yaml
 
-# Deployment 배포
-kubectl apply -f k8s/deployment.yaml
+# Deployment 배포 (Privacy Agent JVM 옵션 포함)
+kubectl apply -f k8s/crud-deployment.yaml
 
-# Service 배포
-kubectl apply -f k8s/service.yaml
-
-# HPA (선택사항)
-kubectl apply -f k8s/hpa.yaml
+# Service 배포 (NodePort 30080)
+kubectl apply -f k8s/crud-service.yaml
 ```
 
-### 배포 확인
+#### 배포 확인
 
 ```bash
 # Pod 상태 확인
-kubectl get pods -l app=crud-api
+kubectl get pods -l app=crud-api -o wide
 
 # Service 확인
 kubectl get svc crud-api-service
 
-# Logs 확인
-kubectl logs -l app=crud-api
+# 애플리케이션 로그 확인
+kubectl logs -l app=crud-api -f
+
+# 특정 POD 로그 확인
+kubectl logs <pod-name> -f
 ```
 
-### 서비스 접근
+#### 서비스 접근
 
 ```bash
-# ClusterIP 서비스인 경우 포트 포워딩
-kubectl port-forward svc/crud-api-service 8080:80
+# Minikube IP 확인
+minikube ip
 
-# 이후 http://localhost:8080/api/products 접근
+# NodePort로 접근 (30080)
+curl http://$(minikube ip):30080/api/products/health
+
+# API 테스트
+curl http://$(minikube ip):30080/api/products
 ```
+
+### 상세 배포 가이드
+
+Privacy Agent 통합, 트러블슈팅, POD별 로그 분리 등 상세한 내용은 **[KUBERNETES_DEPLOYMENT.md](KUBERNETES_DEPLOYMENT.md)** 문서를 참조하세요.
+
+이 문서에는 다음 내용이 포함되어 있습니다:
+- 아키텍처 상세 설명
+- Agent JVM 옵션 설정 방법
+- POD별 로그 분리 메커니즘 (Kubernetes Downward API)
+- 트러블슈팅 가이드
+- 유용한 Kubernetes 명령어 모음
 
 ## 프로젝트 구조
 
@@ -245,14 +355,18 @@ CRUD-API/
 │   │           └── ProductMapper.xml
 │   └── test/
 ├── k8s/
-│   ├── deployment.yaml
-│   ├── service.yaml
-│   ├── configmap.yaml
-│   └── hpa.yaml
+│   ├── crud-deployment.yaml      # Privacy Agent 통합 Deployment
+│   ├── crud-service.yaml         # NodePort Service (30080)
+│   ├── crud-configmap.yaml       # 환경 설정
+│   ├── setup-minikube.sh         # Minikube 초기 설정 스크립트
+│   ├── setup-postgresql.sh       # PostgreSQL 설정 스크립트
+│   ├── deploy.sh                 # 전체 배포 자동화 스크립트
+│   └── test-api.sh               # API 테스트 스크립트
 ├── Dockerfile
 ├── .dockerignore
 ├── build.gradle
-├── DATABASE_SETUP.md
+├── DATABASE_SETUP.md             # 데이터베이스 설정 가이드
+├── KUBERNETES_DEPLOYMENT.md      # Kubernetes 배포 상세 가이드
 └── README.md
 ```
 
