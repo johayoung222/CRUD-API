@@ -69,7 +69,7 @@ spec:
             -Dprivacy-agent.home.dir=/agent/privacy-instance/pargos
             -Dprivacy-agent.log.dir=/agent/privacy-instance/pargos/logs/$(POD_NAME)
             -javaagent:/agent/lib/privacy-agent-bootstrap.jar
-            -Xbootclasspath/p:/agent/lib/privacy-agent.jar
+            -Xbootclasspath/a:/agent/lib/privacy-agent.jar
 
         # 볼륨 마운트
         volumeMounts:
