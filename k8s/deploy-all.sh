@@ -99,10 +99,11 @@ echo ""
 
 # 5. Minikube 시작 (Privacy Agent 마운트 포함)
 echo "5. Minikube 시작..."
-if minikube status | grep -q "Running"; then
+if minikube status 2>/dev/null | grep -q "Running"; then
     echo "Minikube가 이미 실행 중입니다."
 else
     minikube start \
+        --force \
         --mount=true \
         --mount-string="/apps/k8s/privacy-agent-3.0:/agent" \
         --cpus=2 \
