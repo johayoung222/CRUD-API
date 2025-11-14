@@ -63,13 +63,14 @@ spec:
           value: ""  # 비밀번호가 있다면 설정
 
         # Privacy Agent 설정
-        # JVM 옵션으로 Agent 로드 및 POD별 로그 디렉토리 분리
-        - name: JAVA_TOOL_OPTIONS
-          value: >-
-            -Dprivacy-agent.home.dir=/agent/privacy-instance/pargos
-            -Dprivacy-agent.log.dir=/agent/privacy-instance/pargos/logs/$(POD_NAME)
-            -javaagent:/agent/lib/privacy-agent-bootstrap.jar
-            -Xbootclasspath/a:/agent/lib/privacy-agent.jar
+        # TODO: Privacy Agent 테스트를 위해 일시적으로 비활성화
+        # 애플리케이션 정상 작동 확인 후 재활성화 예정
+        # - name: JAVA_TOOL_OPTIONS
+        #   value: >-
+        #     -Dprivacy-agent.home.dir=/agent/privacy-instance/pargos
+        #     -Dprivacy-agent.log.dir=/agent/privacy-instance/pargos/logs/$(POD_NAME)
+        #     -javaagent:/agent/lib/privacy-agent-bootstrap.jar
+        #     -Xbootclasspath/a:/agent/lib/privacy-agent.jar
 
         # 볼륨 마운트
         volumeMounts:
