@@ -97,38 +97,74 @@ chmod +x gradlew
 echo "✓ Gradle 빌드 완료"
 echo ""
 
-# 5. Minikube 시작 (Privacy Agent 마운트 포함)
-echo "5. Minikube 시작..."
+# 5. Privacy Agent 디렉토리 확인
+echo "5. Privacy Agent 디렉토리 확인..."
+if [ ! -d "/apps/k8s/privacy-agent-3.1" ]; then
+    echo "❌ ERROR: /apps/k8s/privacy-agent-3.1 디렉토리가 존재하지 않습니다!"
+    echo ""
+    echo "해결 방법:"
+    echo "  1. Privacy Agent 3.1을 설치하거나"
+    echo "  2. 기존 버전을 복사: cp -r /apps/k8s/privacy-agent-3.0 /apps/k8s/privacy-agent-3.1"
+    echo "  3. 또는 심볼릭 링크: ln -s /apps/k8s/privacy-agent-3.0 /apps/k8s/privacy-agent-3.1"
+    echo ""
+    exit 1
+fi
+echo "✓ Privacy Agent 디렉토리 확인 완료: /apps/k8s/privacy-agent-3.1"
+ls -la /apps/k8s/privacy-agent-3.1/lib/privacy-agent-bootstrap.jar || {
+    echo "❌ ERROR: privacy-agent-bootstrap.jar 파일이 없습니다!"
+    exit 1
+}
+echo ""
+
+# 6. Minikube 시작
+echo "6. Minikube 시작..."
 if minikube status 2>/dev/null | grep -q "Running"; then
     echo "Minikube가 이미 실행 중입니다."
 else
     minikube start \
         --force \
-        --mount=true \
-        --mount-string="/apps/k8s/privacy-agent-3.0:/agent" \
         --cpus=2 \
         --memory=4096 \
         --disk-size=20g
 fi
-echo "✓ Minikube 실행 중"
+echo "✓ Minikube 시작 완료"
 echo ""
 
-# 6. Minikube Docker 환경으로 전환
-echo "6. Minikube Docker 환경 설정..."
+# 7. Privacy Agent 마운트
+echo "7. Privacy Agent 마운트..."
+# 백그라운드에서 마운트 실행
+nohup minikube mount /apps/k8s/privacy-agent-3.1:/agent > /tmp/minikube-mount.log 2>&1 &
+MOUNT_PID=$!
+echo "  - 마운트 프로세스 PID: $MOUNT_PID"
+sleep 5  # 마운트 완료 대기
+
+# 마운트 확인
+echo "  - 마운트 상태 확인 중..."
+minikube ssh -- ls -la /agent/lib/ 2>/dev/null || {
+    echo "❌ ERROR: Privacy Agent 마운트 실패!"
+    echo "마운트 로그:"
+    cat /tmp/minikube-mount.log
+    exit 1
+}
+echo "✓ Privacy Agent 마운트 완료"
+echo ""
+
+# 8. Minikube Docker 환경으로 전환
+echo "8. Minikube Docker 환경 설정..."
 eval $(minikube docker-env)
 echo "✓ Docker 환경 전환 완료"
 echo ""
 
-# 7. Docker 이미지 빌드
-echo "7. Docker 이미지 빌드..."
+# 9. Docker 이미지 빌드
+echo "9. Docker 이미지 빌드..."
 cd $PROJECT_DIR
 docker build -t $IMAGE_NAME:$IMAGE_TAG .
 docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest
 echo "✓ Docker 이미지 빌드 완료"
 echo ""
 
-# 8. 기존 배포 삭제 (있는 경우)
-echo "8. 기존 배포 확인 및 삭제..."
+# 10. 기존 배포 삭제 (있는 경우)
+echo "10. 기존 배포 확인 및 삭제..."
 if kubectl get deployment crud-api-deployment &> /dev/null; then
     echo "기존 배포를 삭제합니다..."
     kubectl delete -f k8s/crud-deployment.yaml || true
@@ -139,16 +175,16 @@ fi
 echo "✓ 기존 리소스 정리 완료"
 echo ""
 
-# 9. Kubernetes 리소스 배포
-echo "9. Kubernetes 리소스 배포..."
+# 11. Kubernetes 리소스 배포
+echo "11. Kubernetes 리소스 배포..."
 kubectl apply -f k8s/crud-configmap.yaml
 kubectl apply -f k8s/crud-deployment.yaml
 kubectl apply -f k8s/crud-service.yaml
 echo "✓ Kubernetes 리소스 배포 완료"
 echo ""
 
-# 10. Pod 상태 확인
-echo "10. Pod 배포 상태 확인..."
+# 12. Pod 상태 확인
+echo "12. Pod 배포 상태 확인..."
 echo "Pod가 준비될 때까지 대기 중... (최대 5분)"
 kubectl wait --for=condition=ready pod -l app=crud-api --timeout=300s || {
     echo "경고: Pod 준비가 완료되지 않았습니다. 상태를 확인하세요."
@@ -157,7 +193,7 @@ kubectl wait --for=condition=ready pod -l app=crud-api --timeout=300s || {
 }
 echo ""
 
-# 11. 배포 결과 확인
+# 13. 배포 결과 확인
 echo "=========================================="
 echo "배포 완료!"
 echo "=========================================="
@@ -166,7 +202,7 @@ echo "📦 배포된 리소스:"
 kubectl get all -l app=crud-api
 echo ""
 
-# 12. Service URL 확인
+# 14. Service URL 확인
 echo "🌐 서비스 접근 정보:"
 MINIKUBE_IP=$(minikube ip)
 NODE_PORT=$(kubectl get svc crud-api-service -o jsonpath='{.spec.ports[0].nodePort}')
@@ -181,7 +217,7 @@ echo "  - Auth (Redis): http://$MINIKUBE_IP:$NODE_PORT/api/auth/redis/login"
 echo "  - Auth (Session): http://$MINIKUBE_IP:$NODE_PORT/api/auth/session/login"
 echo ""
 
-# 13. Pod 로그 및 유용한 명령어
+# 15. Pod 로그 및 유용한 명령어
 echo "📊 Pod 목록 및 상태:"
 kubectl get pods -l app=crud-api -o wide
 echo ""
