@@ -130,23 +130,30 @@ fi
 echo "✓ Minikube 시작 완료"
 echo ""
 
-# 7. Privacy Agent 마운트
-echo "7. Privacy Agent 마운트..."
-# 백그라운드에서 마운트 실행
-nohup minikube mount /apps/k8s/privacy-agent-3.1:/agent > /tmp/minikube-mount.log 2>&1 &
-MOUNT_PID=$!
-echo "  - 마운트 프로세스 PID: $MOUNT_PID"
-sleep 5  # 마운트 완료 대기
+# 7. Privacy Agent 복사 (minikube cp 사용)
+echo "7. Privacy Agent 복사..."
+# tar 파일 생성
+cd /apps/k8s
+if [ ! -f "/tmp/privacy-agent-3.1.tar.gz" ]; then
+    echo "  - tar 파일 생성 중..."
+    tar -czf /tmp/privacy-agent-3.1.tar.gz privacy-agent-3.1/
+fi
 
-# 마운트 확인
-echo "  - 마운트 상태 확인 중..."
-minikube ssh -- ls -la /agent/lib/ 2>/dev/null || {
-    echo "❌ ERROR: Privacy Agent 마운트 실패!"
-    echo "마운트 로그:"
-    cat /tmp/minikube-mount.log
+# Minikube 노드로 복사
+echo "  - Minikube 노드로 복사 중..."
+minikube cp /tmp/privacy-agent-3.1.tar.gz /tmp/privacy-agent-3.1.tar.gz
+
+# Minikube 내부에서 압축 해제
+echo "  - Minikube 내부에서 압축 해제 중..."
+minikube ssh -- "sudo mkdir -p /agent && cd /agent && sudo tar -xzf /tmp/privacy-agent-3.1.tar.gz --strip-components=1"
+
+# 복사 확인
+echo "  - 복사 상태 확인 중..."
+minikube ssh -- ls -la /agent/lib/privacy-agent-bootstrap.jar 2>/dev/null || {
+    echo "❌ ERROR: Privacy Agent 복사 실패!"
     exit 1
 }
-echo "✓ Privacy Agent 마운트 완료"
+echo "✓ Privacy Agent 복사 완료"
 echo ""
 
 # 8. Minikube Docker 환경으로 전환
